@@ -7,7 +7,7 @@ export default function Room() {
 	const [socket, setSocket] = useState(null);
 	const [mediaStream, setMediaStream] = useState(null);
 	const [call, setCall] = useState(null);
-	const [isAudio, setIsAudio] = useState(false);
+	const [isAudio, setIsAudio] = useState(true);
 	const [isVideo, setIsVideo] = useState(true);
 	const [peer, setPeer] = useState(null);
 	const [peerId, setPeerId] = useState(null);
