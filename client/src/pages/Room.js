@@ -7,7 +7,7 @@ export default function Room() {
 	const [socket, setSocket] = useState(null);
 	const [mediaStream, setMediaStream] = useState(null);
 	const [call, setCall] = useState(null);
-	const [isAudio, setIsAudio] = useState(true);
+	const [isAudio, setIsAudio] = useState(false);
 	const [isVideo, setIsVideo] = useState(true);
 	const [peer, setPeer] = useState(null);
 	const [peerId, setPeerId] = useState(null);
@@ -19,6 +19,7 @@ export default function Room() {
 	const roomName = searchParams.get("roomName");
 	const navigate = useNavigate();
 
+	// check room name
 	useEffect(() => {
 		if (!roomName) {
 			navigate("/");
@@ -26,6 +27,7 @@ export default function Room() {
 		// eslint-disable-next-line
 	}, []);
 
+	// initiate
 	useEffect(() => {
 		// init socket
 		const _socket = io("https://webrtc-react-api.glitch.me");
@@ -47,6 +49,7 @@ export default function Room() {
 		setPeer(_peer);
 	}, []);
 
+	// listen socket emit
 	useEffect(() => {
 		if (socket) {
 			socket.on("joinRoom", (id) => {
@@ -63,6 +66,23 @@ export default function Room() {
 		}
 		// eslint-disable-next-line
 	}, [socket]);
+
+	// get media stream
+	useEffect(() => {
+		navigator.mediaDevices
+			.getUserMedia({ video: isVideo, audio: isAudio })
+			.then((stream) => {
+				setMediaStream(stream);
+			})
+			.catch((err) => {
+				console.log("🚀 ~ file: Room.js ~ line 72 ~ useEffect ~ err", err);
+			});
+	}, []);
+
+	// show my stream
+	useEffect(() => {
+		myVideo.current.srcObject = mediaStream;
+	}, [mediaStream]);
 
 	// join room
 	useEffect(() => {
@@ -97,50 +117,33 @@ export default function Room() {
 	// do call
 	useEffect(() => {
 		if (peer !== null && peerIds.length > 0 && peerIds[0] !== peerId) {
-			navigator.mediaDevices
-				.getUserMedia({ video: isVideo, audio: isAudio })
-				.then((stream) => {
-					myVideo.current.srcObject = stream;
-					setMediaStream(stream);
-					const _call = peer.call(peerIds[0], stream);
-					setCall(_call);
-					statusRef.current.innerText = "Call connected";
-					_call.on("stream", (remoteStream) => {
-						partnerVideo.current.srcObject = remoteStream;
-					});
-				})
-				.catch((err) => {
-					console.log("🚀 ~ file: Room.js ~ line 72 ~ useEffect ~ err", err);
-				});
+			const _call = peer.call(peerIds[0], mediaStream);
+			setCall(_call);
+			statusRef.current.innerText = "Call connected";
 		}
 		// eslint-disable-next-line
 	}, [peerIds]);
 
-	// answer call
+	// listen peer call
 	useEffect(() => {
 		if (peer) {
 			peer.on("call", (_call) => {
+				setCall(_call);
 				statusRef.current.innerText = "Call received";
-				navigator.mediaDevices
-					.getUserMedia({ video: isVideo, audio: isAudio })
-					.then((stream) => {
-						myVideo.current.srcObject = stream;
-						setMediaStream(stream);
-						setCall(_call);
-						_call.answer(stream); // Answer the call with an A/V stream.
-						_call.on("stream", (remoteStream) => {
-							partnerVideo.current.srcObject = remoteStream;
-						});
-						_call.on("close", () => {
-							partnerVideo.current.srcObject = null;
-						});
-					})
-					.catch((err) => {
-						console.log("🚀 ~ file: Room.js ~ line 91 ~ peer.on ~ err", err);
-					});
 			});
 		}
 	}, [peer]);
+
+	// answer and stream call
+	useEffect(() => {
+		if (call) {
+			call.on("stream", (remoteStream) => {
+				partnerVideo.current.srcObject = remoteStream;
+			});
+			call.answer(mediaStream);
+			statusRef.current.innerText = "Call connected";
+		}
+	}, [call]);
 
 	// endcall
 	const handleEndCall = () => {
@@ -163,15 +166,26 @@ export default function Room() {
 		<div>
 			<h1>Room Page</h1>
 			<h2>Peer Id: {peerId}</h2>
-			{/* <pre>Peer Ids: {JSON.stringify(peerIds, null, 2)}</pre> */}
 			<p ref={statusRef}></p>
 			<p>Video: {isVideo ? "On" : "Off"}</p>
 			<p>Audio: {isAudio ? "On" : "Off"}</p>
 			<button onClick={handleEndCall}>End call</button>
-			<button onClick={() => setIsAudio(!isAudio)}>
+			<button
+				onClick={() => {
+					mediaStream.getAudioTracks()[0].enabled = !mediaStream.getAudioTracks()[0]
+						.enabled;
+					setIsAudio(!isAudio);
+				}}
+			>
 				{isAudio ? "Audio: Off" : "Audio: On"}
 			</button>
-			<button onClick={() => setIsVideo(!isVideo)}>
+			<button
+				onClick={() => {
+					mediaStream.getVideoTracks()[0].enabled = !mediaStream.getVideoTracks()[0]
+						.enabled;
+					setIsVideo(!isVideo);
+				}}
+			>
 				{isVideo ? "Video: Off" : "Video: On"}
 			</button>
 			<br />
