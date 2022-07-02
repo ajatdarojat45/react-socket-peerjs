@@ -69,14 +69,40 @@ export default function Room() {
 
 	// get media stream
 	useEffect(() => {
-		navigator.mediaDevices
-			.getUserMedia({ video: isVideo, audio: isAudio })
-			.then((stream) => {
-				setMediaStream(stream);
-			})
-			.catch((err) => {
-				console.log("🚀 ~ file: Room.js ~ line 72 ~ useEffect ~ err", err);
-			});
+		(async () => {
+			// create audio and video constraints
+			const constraintsVideo = {
+				audio: false,
+				video: true,
+			};
+			const constraintsAudio = { audio: true };
+
+			// create audio and video streams separately
+			const audioStream = await navigator.mediaDevices.getUserMedia(
+				constraintsAudio
+			);
+			const videoStream = await navigator.mediaDevices.getUserMedia(
+				constraintsVideo
+			);
+
+			// combine the streams
+			const combinedStream = new MediaStream([
+				...videoStream.getVideoTracks(),
+				...audioStream.getAudioTracks(),
+			]);
+
+			setMediaStream(combinedStream);
+		})();
+
+		// navigator.mediaDevices
+		// 	.getUserMedia({ video: isVideo, audio: isAudio })
+		// 	.then((stream) => {
+		// 		setMediaStream(stream);
+		// 	})
+		// 	.catch((err) => {
+		// 		console.log("🚀 ~ file: Room.js ~ line 72 ~ useEffect ~ err", err);
+		// 	});
+		// eslint-disable-next-line
 	}, []);
 
 	// show my stream
@@ -143,6 +169,7 @@ export default function Room() {
 			call.answer(mediaStream);
 			statusRef.current.innerText = "Call connected";
 		}
+		// eslint-disable-next-line
 	}, [call]);
 
 	// endcall
